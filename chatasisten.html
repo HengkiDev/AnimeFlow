@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeFlow AI - Chat Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6a55fa;
+            --secondary: #4b3dc9;
+            --dark: #222639;
+            --light: #f5f5f7;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --info: #70a1ff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #121212;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: var(--dark);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        main {
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .section-title i {
+            color: var(--primary);
+        }
+        
+        footer {
+            background-color: var(--dark);
+            padding: 2rem 1rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links a {
+            color: var(--light);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        
+        .footer-text {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .mobile-nav {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 80%;
+            max-width: 300px;
+            height: 100vh;
+            background-color: var(--dark);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            padding: 2rem 1rem;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+
+        .mobile-nav.active {
+            left: 0;
+        }
+
+        .close-menu {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .mobile-nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .mobile-nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-size: 1.2rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Chat specific styles */
+        .chat-container {
+            background-color: var(--dark);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+            margin-bottom: 2rem;
+        }
+
+        .chat-header {
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ai-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+
+        .ai-info {
+            flex-grow: 1;
+        }
+
+        .ai-name {
+            font-weight: bold;
+            color: var(--light);
+        }
+
+        .ai-status {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            animation: message-fade-in 0.3s ease;
+        }
+
+        @keyframes message-fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--primary);
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-message {
+            align-self: flex-start;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 0.3rem;
+            padding: 0.5rem 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            width: fit-content;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #aaa;
+            border-radius: 50%;
+            animation: typing-animation 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-animation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+
+        .chat-input-container {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 24px;
+            padding: 0.8rem 1.2rem;
+            color: var(--light);
+            outline: none;
+            transition: background-color 0.3s;
+        }
+
+        .chat-input:focus {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .send-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .send-btn:hover {
+            background-color: var(--secondary);
+        }
+
+        .send-btn:disabled {
+            background-color: rgba(255, 255, 255, 0.1);
+            cursor: not-allowed;
+        }
+
+        .chat-features {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card {
+            background-color: var(--dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+            flex: 1;
+            margin: 0 0.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .error-message {
+            background-color: rgba(255, 71, 87, 0.2);
+            color: var(--danger);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .suggested-prompts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .suggested-prompt {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .suggested-prompt:hover {
+            background-color: var(--primary);
+        }
+
+        /* Enhanced Responsiveness */
+        @media (max-width: 992px) {
+            .chat-features {
+                flex-wrap: wrap;
+            }
+            
+            .feature-card {
+                flex: 1 1 calc(50% - 1rem);
+                margin-bottom: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .feature-card {
+                flex: 1 1 100%;
+            }
+            
+            .chat-container {
+                height: 60vh;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .message {
+                max-width: 90%;
+            }
+            
+            .chat-header {
+                padding: 0.8rem;
+            }
+            
+            .ai-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+            
+            .chat-container {
+                height: 70vh;
+            }
+            
+            .feature-icon {
+                font-size: 1.5rem;
+            }
+            
+            .feature-title {
+                font-size: 0.9rem;
+            }
+            
+            .feature-desc {
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .ai-name {
+                font-size: 0.9rem;
+            }
+            
+            .ai-status {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                AnimeFlow
+            </div>
+           <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="search.html" class="active">Search</a>
+                <a href="chatasisten.html" class="active">AI Chat</a>
+            </div>
+            <button class="mobile-menu-btn" id="openMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+    </header>
+    
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <button class="close-menu" id="closeMenu">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="logo">
+            <i class="fas fa-play-circle"></i>
+            AnimeFlow
+        </div>
+        <div class="mobile-nav-links">
+            <a href="index.html">Home</a>
+            <a href="search.html" class="active">Search</a>
+            <a href="chatasisten.html" class="active">AI Chat</a>
+        </div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+    
+    <main>
+        <h1 class="section-title">
+            <i class="fas fa-robot"></i> AnimeFlow AI Assistant
+        </h1>
+        
+        <div class="chat-features">
+            <div class="feature-card" data-prompt="Can you recommend an anime similar to Attack on Titan?">
+                <div class="feature-icon">
+                    <i class="fas fa-tv"></i>
+                </div>
+                <div class="feature-title">Anime Recommendations</div>
+                <div class="feature-desc">Get personalized anime suggestions based on your preferences</div>
+            </div>
+            <div class="feature-card" data-prompt="Explain the plot of Demon Slayer in simple terms">
+                <div class="feature-icon">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <div class="feature-title">Plot Explanations</div>
+                <div class="feature-desc">Get summaries and explanations of complex anime plots</div>
+            </div>
+            <div class="feature-card" data-prompt="Who are the most popular characters in One Piece?">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="feature-title">Character Information</div>
+                <div class="feature-desc">Learn about your favorite anime characters and their stories</div>
+            </div>
+        </div>
+        
+        <div id="error-container" style="display: none;" class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-text">Something went wrong. Please try again.</span>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="ai-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="ai-info">
+                    <div class="ai-name">AnimeFlow AI</div>
+                    <div class="ai-status">Online</div>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="message ai-message">
+                    Hello! I'm AnimeFlow AI, your anime assistant. How can I help you today?
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="user-input" 
+                    placeholder="Type your message here..." 
+                    autocomplete="off"
+                >
+                <button class="send-btn" id="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="suggested-prompts">
+            <button class="suggested-prompt" data-prompt="What's the best anime of 2024?">What's the best anime of 2024?</button>
+            <button class="suggested-prompt" data-prompt="Recommend me a slice of life anime">Recommend me a slice of life anime</button>
+            <button class="suggested-prompt" data-prompt="Explain the ending of Neon Genesis Evangelion">Explain the ending of Evangelion</button>
+            <button class="suggested-prompt" data-prompt="Who is the strongest anime character?">Who is the strongest anime character?</button>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                AnimeFlow
+            </div>
+            <div class="footer-links">
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+            <p class="footer-text">
+                &copy; 2025 AnimeFlow. Create By.HengkiDev❤️ And Otakudesu.
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const errorContainer = document.getElementById('error-container');
+            const errorText = document.getElementById('error-text');
+            const mobileNav = document.getElementById('mobileNav');
+            const overlay = document.getElementById('overlay');
+            const openMenuButton = document.getElementById('openMenu');
+            const closeMenuButton = document.getElementById('closeMenu');
+            const featureCards = document.querySelectorAll('.feature-card');
+            const suggestedPrompts = document.querySelectorAll('.suggested-prompt');
+            
+            // Mobile menu functionality
+            openMenuButton.addEventListener('click', function() {
+                mobileNav.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            
+            function closeMenu() {
+                mobileNav.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            closeMenuButton.addEventListener('click', closeMenu);
+            overlay.addEventListener('click', closeMenu);
+            
+            // Handle send button click
+            sendButton.addEventListener('click', sendMessage);
+            
+            // Handle Enter key press
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Handle user input changes
+            userInput.addEventListener('input', function() {
+                if (userInput.value.trim() === '') {
+                    sendButton.disabled = true;
+                } else {
+                    sendButton.disabled = false;
+                }
+            });
+            
+            // Initially disable send button
+            sendButton.disabled = true;
+            
+            // Handle feature card clicks
+            featureCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const prompt = this.getAttribute('data-prompt');
+                    if (prompt) {
+                        userInput.value = prompt;
+                        sendButton.disabled = false;
+                        userInput.focus();
+                    }
+                });
+            });
+            
+            // Handle suggested prompt clicks
+            suggestedPrompts.forEach(button => {
+                button.addEventListener('click', function() {
+                    const prompt = this.getAttribute('data-prompt');
+                    if (prompt) {
+                        userInput.value = prompt;
+                        sendButton.disabled = false;
+                        userInput.focus();
+                    }
+                });
+            });
+            
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message === '') return;
+                
+                // Add user message to chat
+                addMessage(message, 'user');
+                
+                // Clear input field and disable send button
+                userInput.value = '';
+                sendButton.disabled = true;
+                
+                // Show typing indicator
+                showTypingIndicator();
+                
+                // Call API with the user's message
+                fetchAIResponse(message);
+            }
+            
+            function addMessage(content, sender) {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${sender}-message`;
+                messageElement.textContent = content;
+                
+                chatMessages.appendChild(messageElement);
+                
+                // Scroll to bottom
+                scrollToBottom();
+            }
+            
+            function showTypingIndicator() {
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing-indicator';
+                typingIndicator.id = 'typing-indicator';
+                
+                for (let i = 0; i < 3; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'typing-dot';
+                    typingIndicator.appendChild(dot);
+                }
+                
+                chatMessages.appendChild(typingIndicator);
+                
+                // Scroll to bottom
+                scrollToBottom();
+            }
+            
+            function removeTypingIndicator() {
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function fetchAIResponse(userMessage) {
+                // Hide any previous error
+                errorContainer.style.display = 'none';
+                
+                // Encode the user message for URL
+                const encodedMessage = encodeURIComponent(userMessage);
+                const apiUrl = `https://api.siputzx.my.id/api/ai/claude-sonnet-37?content=${encodedMessage}`;
+                
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Remove typing indicator
+                        removeTypingIndicator();
+                        
+                        // Check if response has expected format
+                        if (data.status && data.data) {
+                            // Add AI response to chat
+                            addMessage(data.data, 'ai');
+                        } else {
+                            throw new Error('Invalid response format from API');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching AI response:', error);
+                        
+                        // Remove typing indicator
+                        removeTypingIndicator();
+                        
+                        // Show error message
+                        errorText.textContent = 'Failed to get a response. Please try again.';
+                        errorContainer.style.display = 'flex';
+                        
+                        // Add error message to chat
+                        addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+                    });
+            }
+            
+            // Handle window resize events for responsive adjustments
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768 && mobileNav.classList.contains('active')) {
+                    closeMenu();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
