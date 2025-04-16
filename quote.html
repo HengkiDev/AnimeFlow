@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeFlow - Anime Quotes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6a55fa;
+            --secondary: #4b3dc9;
+            --dark: #222639;
+            --light: #f5f5f7;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --info: #70a1ff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #121212;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+        
+        header {
+            background-color: var(--dark);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            flex-grow: 1;
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .description {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        main {
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-align: center;
+        }
+        
+        .section-title i {
+            color: var(--primary);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .quotes-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .quote-card {
+            background-color: var(--dark);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+            animation: message-fade-in 0.5s ease;
+        }
+        
+        @keyframes message-fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .quote-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .quote-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .character-img {
+            width: 52px;
+            height: 71px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        
+        .character-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+        
+        .anime-title {
+            font-size: 0.9rem;
+            color: var(--light);
+            opacity: 0.8;
+        }
+        
+        .episode {
+            font-size: 0.8rem;
+            color: var(--light);
+            opacity: 0.7;
+        }
+        
+        .quote-content {
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-bottom: 15px;
+            font-style: italic;
+            color: var(--light);
+        }
+        
+        .quote-content::before, .quote-content::after {
+            content: '"';
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .quote-footer {
+            margin-top: 15px;
+            text-align: right;
+        }
+        
+        .source-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .source-link:hover {
+            color: var(--secondary);
+            text-decoration: underline;
+        }
+        
+        footer {
+            background-color: var(--dark);
+            padding: 2rem 1rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links a {
+            color: var(--light);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        
+        .footer-text {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        /* Feature Cards */
+        .quote-features {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-card {
+            background-color: var(--dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+            flex: 1;
+            margin: 0 0.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .feature-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        /* Error Message */
+        .error-message {
+            background-color: rgba(255, 71, 87, 0.2);
+            color: var(--danger);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Mobile Navigation */
+        .mobile-nav {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 80%;
+            max-width: 300px;
+            height: 100vh;
+            background-color: var(--dark);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            padding: 2rem 1rem;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+
+        .mobile-nav.active {
+            left: 0;
+        }
+
+        .close-menu {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .mobile-nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .mobile-nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-size: 1.2rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Enhanced Responsiveness */
+        @media (max-width: 992px) {
+            .quote-features {
+                flex-wrap: wrap;
+            }
+            
+            .feature-card {
+                flex: 1 1 calc(50% - 1rem);
+                margin-bottom: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .feature-card {
+                flex: 1 1 100%;
+            }
+            
+            .quotes-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .quotes-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .feature-icon {
+                font-size: 1.5rem;
+            }
+            
+            .feature-title {
+                font-size: 0.9rem;
+            }
+            
+            .feature-desc {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                AnimeFlow
+            </div>
+             <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="search.html" class="active">Search</a>
+                <a href="char.html"> Search Characters</a>
+                <a href="quote.html">Quotes</a>
+                <a href="chatasisten.html" class="active">AI Chat</a>
+            </div>
+            <button class="mobile-menu-btn" id="openMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+    </header>
+    
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <button class="close-menu" id="closeMenu">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="logo">
+            <i class="fas fa-play-circle"></i>
+            AnimeFlow
+        </div>
+        <div class="mobile-nav-links">
+                <a href="index.html">Home</a>
+                <a href="search.html" class="active">Search</a>
+                <a href="char.html"> Search Characters</a>
+                <a href="quote.html">Quotes</a>
+                <a href="chatasisten.html" class="active">AI Chat</a>
+        </div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+    
+    <main>
+        <h1 class="section-title">
+            <i class="fas fa-quote-left"></i> Anime Quotes
+        </h1>
+        <p class="description" style="text-align: center; margin-bottom: 20px;">
+            Kumpulan quote inspiratif dari berbagai anime
+        </p>
+        
+        <div id="error-container" style="display: none;" class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-text">Terjadi kesalahan. Silakan coba lagi.</span>
+        </div>
+        
+        <div class="controls">
+            <button id="refresh-btn"><i class="fas fa-sync-alt"></i> Muat Ulang Quote</button>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <div id="quotes-container" class="quotes-container">
+            <!-- Quotes will be loaded here -->
+        </div>
+        <br>
+        <hr>
+        <br>
+        
+        <div class="quote-features">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="feature-title">Inspirasi</div>
+                <div class="feature-desc">Temukan quote anime yang menginspirasi</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-share-alt"></i>
+                </div>
+                <div class="feature-title">Bagikan</div>
+                <div class="feature-desc">Temukan dan bagikan quote favorit Anda</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bookmark"></i>
+                </div>
+                <div class="feature-title">Koleksi</div>
+                <div class="feature-desc">Kumpulkan quote anime yang Anda sukai</div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                AnimeFlow
+            </div>
+            <div class="footer-links">
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+            <p class="footer-text">
+                &copy; 2025 AnimeFlow. Create By.HengkiDev❤️ And Otakudesu.
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const quotesContainer = document.getElementById('quotes-container');
+            const loadingElement = document.getElementById('loading');
+            const refreshButton = document.getElementById('refresh-btn');
+            const errorContainer = document.getElementById('error-container');
+            const errorText = document.getElementById('error-text');
+            const mobileNav = document.getElementById('mobileNav');
+            const overlay = document.getElementById('overlay');
+            const openMenuButton = document.getElementById('openMenu');
+            const closeMenuButton = document.getElementById('closeMenu');
+            const featureCards = document.querySelectorAll('.feature-card');
+            
+            // Mobile menu functionality
+            openMenuButton.addEventListener('click', function() {
+                mobileNav.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            
+            function closeMenu() {
+                mobileNav.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            closeMenuButton.addEventListener('click', closeMenu);
+            overlay.addEventListener('click', closeMenu);
+            
+            // Function to fetch quotes from API
+            async function fetchQuotes() {
+                try {
+                    // Show loading spinner and hide any previous error
+                    loadingElement.style.display = 'flex';
+                    errorContainer.style.display = 'none';
+                    quotesContainer.innerHTML = '';
+                    
+                    const response = await fetch('https://api.siputzx.my.id/api/r/quotesanime');
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch quotes');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.status && data.data && data.data.length > 0) {
+                        displayQuotes(data.data);
+                    } else {
+                        throw new Error('No quotes found');
+                    }
+                } catch (error) {
+                    console.error('Error fetching quotes:', error);
+                    errorText.textContent = 'Gagal memuat quotes. Silakan coba lagi nanti.';
+                    errorContainer.style.display = 'flex';
+                    quotesContainer.innerHTML = `
+                        <div style="text-align: center; grid-column: 1 / -1;">
+                            <h2>Oops! Ada kesalahan saat memuat quote.</h2>
+                            <p>Silakan coba lagi nanti.</p>
+                        </div>
+                    `;
+                } finally {
+                    loadingElement.style.display = 'none';
+                }
+            }
+            
+            // Function to display quotes
+            function displayQuotes(quotes) {
+                quotesContainer.innerHTML = '';
+                
+                quotes.forEach((quote, index) => {
+                    setTimeout(() => {
+                        const quoteCard = document.createElement('div');
+                        quoteCard.className = 'quote-card';
+                        
+                        quoteCard.innerHTML = `
+                            <div class="quote-header">
+                                <img src="${quote.gambar}" alt="${quote.karakter}" class="character-img" onerror="this.src='/api/placeholder/52/71'">
+                                <div class="character-info">
+                                    <h3>${quote.karakter}</h3>
+                                    <div class="anime-title">${quote.anime}</div>
+                                    <div class="episode">${quote.episode}</div>
+                                </div>
+                            </div>
+                            <div class="quote-content">${quote.quotes}</div>
+                        `;
+                        
+                        quotesContainer.appendChild(quoteCard);
+                    }, index * 150); // Staggered animation effect
+                });
+            }
+            
+            // Add event listener to refresh button
+            refreshButton.addEventListener('click', fetchQuotes);
+            
+            // Feature cards functionality
+            featureCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Feature card functionality can be implemented here
+                    // For now, just reload quotes
+                    fetchQuotes();
+                });
+            });
+            
+            // Handle window resize events for responsive adjustments
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768 && mobileNav.classList.contains('active')) {
+                    closeMenu();
+                }
+            });
+            
+            // Fetch quotes when page loads
+            fetchQuotes();
+        });
+    </script>
+</body>
+</html>
