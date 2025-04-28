@@ -9,6 +9,98 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        .notification-popup {
+        display: none; /* Awalnya tersembunyi */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1001; /* Di atas overlay yang lain */
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .notification-content {
+        background-color: var(--dark);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(106, 85, 250, 0.3);
+        overflow: hidden;
+        animation: popup-fade-in 0.3s ease-out;
+    }
+    
+    @keyframes popup-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .notification-header {
+        background-color: var(--primary);
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+    
+    .notification-header i {
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .notification-header h3 {
+        margin: 0;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .notification-body {
+        padding: 1.5rem;
+        color: var(--light);
+    }
+    
+    .notification-body p {
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    
+    .notification-body p:last-child {
+        margin-bottom: 0;
+    }
+    
+    .notification-footer {
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .notification-btn {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.7rem 1.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .notification-btn:hover {
+        background-color: var(--secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(106, 85, 250, 0.3);
+    }
+
         * {
             margin: 0;
             padding: 0;
@@ -757,9 +849,27 @@
             width: 100%;
             margin-top: 1rem;
         }
+
+        
     </style>
 </head>
 <body>
+    <div id="notificationPopup" class="notification-popup">
+        <div class="notification-content">
+            <div class="notification-header">
+                <i class="fas fa-info-circle"></i>
+                <h3>Selamat Datang di AnimeFlow</h3>
+            </div>
+            <div class="notification-body">
+                <p>Website anime ini masih dalam tahap pengembangan. Jika episode tidak bisa dibuka, kemungkinan anime tersebut belum ditambahkan.</p>
+                <p>Terima kasih telah mengunjungi AnimeFlow!</p>
+            </div>
+            <div class="notification-footer">
+                <button id="notificationBtn" class="notification-btn">Ya, Saya Mengerti</button>
+            </div>
+        </div>
+    </div>
+
     <header>
         <nav class="navbar">
             <div class="logo">
@@ -923,6 +1033,41 @@
             </div>
         </div>
     </div>
+<script>
+    // Popup Notification
+    document.addEventListener('DOMContentLoaded', function() {
+        const notificationPopup = document.getElementById('notificationPopup');
+        const notificationBtn = document.getElementById('notificationBtn');
+        
+        // Menampilkan popup setelah halaman dimuat
+        setTimeout(() => {
+            notificationPopup.style.display = 'flex';
+        }, 1000);
+        
+        // Menutup popup saat tombol diklik
+        notificationBtn.addEventListener('click', () => {
+            notificationPopup.style.display = 'none';
+            
+            // Simpan status di localStorage supaya tidak muncul lagi dalam sesi browsing yang sama
+            localStorage.setItem('popupShown', 'true');
+        });
+        
+        // Periksa apakah popup sudah pernah ditampilkan
+        const popupShown = localStorage.getItem('popupShown');
+        if (popupShown) {
+            notificationPopup.style.display = 'none';
+        }
+        
+        // Reset localStorage setelah 24 jam (opsional)
+        const lastReset = localStorage.getItem('lastPopupReset');
+        const now = new Date().getTime();
+        
+        if (!lastReset || now - lastReset > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem('popupShown');
+            localStorage.setItem('lastPopupReset', now);
+        }
+    });
+</script>
 
     <script>
         // Firebase Configuration
