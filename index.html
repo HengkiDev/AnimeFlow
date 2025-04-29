@@ -1299,44 +1299,56 @@
         }
         
         // Load anime list
-        function loadAnimeList(isAdmin = false) {
-            const target = isAdmin ? adminAnimeList : animeList;
-            target.innerHTML = '<div class="loading">Memuat daftar anime...</div>';
+function loadAnimeList(isAdmin = false) {
+    const target = isAdmin ? adminAnimeList : animeList;
+    target.innerHTML = '<div class="loading">Memuat daftar anime...</div>';
+    
+    // Menggunakan Realtime Database
+    db.ref('animes').once('value')
+        .then(snapshot => {
+            animeData = [];
+            target.innerHTML = '';
             
-            // Menggunakan Realtime Database
-            db.ref('animes').once('value')
-                .then(snapshot => {
-                    animeData = [];
-                    target.innerHTML = '';
-                    
-                    if (!snapshot.exists()) {
-                        target.innerHTML = '<p>Tidak ada anime yang ditemukan.</p>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(childSnapshot => {
-                        const anime = childSnapshot.val();
-                        anime.id = childSnapshot.key; // Mendapatkan key sebagai ID
-                        
-                        // Make sure episodes is always an array
-                        if (!anime.episodes || !Array.isArray(anime.episodes)) {
-                            anime.episodes = anime.videoUrl ? [anime.videoUrl] : [];
-                        }
-                        
-                        // Add episodeCount for display
-                        anime.episodeCount = anime.episodes.length;
-                        
-                        animeData.push(anime);
-                        
-                        const animeCard = createAnimeCard(anime, isAdmin);
-                        target.appendChild(animeCard);
-                    });
-                })
-                .catch(error => {
-                    console.error("Error getting data: ", error);
-                    target.innerHTML = '<p>Gagal memuat daftar anime. Silakan coba lagi nanti.</p>';
-                });
-        }
+            if (!snapshot.exists()) {
+                target.innerHTML = '<p>Tidak ada anime yang ditemukan.</p>';
+                return;
+            }
+            
+            snapshot.forEach(childSnapshot => {
+                const anime = childSnapshot.val();
+                anime.id = childSnapshot.key; // Mendapatkan key sebagai ID
+                
+                // Make sure episodes is always an array
+                if (!anime.episodes || !Array.isArray(anime.episodes)) {
+                    anime.episodes = anime.videoUrl ? [anime.videoUrl] : [];
+                }
+                
+                // Add episodeCount for display
+                anime.episodeCount = anime.episodes.length;
+                
+                animeData.push(anime);
+            });
+            
+            // Urutkan anime berdasarkan updatedAt terbaru di atas
+            animeData.sort((a, b) => {
+                // Gunakan updatedAt atau createdAt, dengan fallback ke 0 jika keduanya tidak ada
+                const timeA = a.updatedAt || a.createdAt || 0;
+                const timeB = b.updatedAt || b.createdAt || 0;
+                // Urutkan menurun (terbaru dulu)
+                return timeB - timeA;
+            });
+            
+            // Tampilkan anime yang sudah diurutkan
+            animeData.forEach(anime => {
+                const animeCard = createAnimeCard(anime, isAdmin);
+                target.appendChild(animeCard);
+            });
+        })
+        .catch(error => {
+            console.error("Error getting data: ", error);
+            target.innerHTML = '<p>Gagal memuat daftar anime. Silakan coba lagi nanti.</p>';
+        });
+}
         
         // Create anime card
         function createAnimeCard(anime, isAdmin = false) {
