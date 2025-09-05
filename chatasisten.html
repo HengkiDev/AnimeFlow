@@ -795,7 +795,7 @@
                 
                 // Encode the user message for URL
                 const encodedMessage = encodeURIComponent(userMessage);
-                const apiUrl = `https://api.siputzx.my.id/api/ai/claude-sonnet-37?content=${encodedMessage}`;
+                const apiUrl = `https://api.siputzx.my.id/api/ai/metaai?query=${encodedMessage}`;
                 
                 fetch(apiUrl)
                     .then(response => {
