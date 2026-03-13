@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnimeFlow</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
 /* Root Variables & Base Styles */
@@ -1434,265 +1432,318 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
     <script>
-// Firebase Configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCharyFfDzrjfcK_uXXToFtfP-rqk4HpUg",
-  authDomain: "animeflow-ccf79.firebaseapp.com",
-  databaseURL: "https://animeflow-ccf79-default-rtdb.firebaseio.com",
-  projectId: "animeflow-ccf79",
-  storageBucket: "animeflow-ccf79.firebasestorage.app",
-  messagingSenderId: "426221781755",
-  appId: "1:426221781755:web:2d648ddf502e95df94265e",
-  measurementId: "G-BNN1X1T3WD"
+// Supabase Configuration
+const supabaseUrl = 'https://db.lnzubsxzlucfnzooccpt.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuenVic3h6bHVjZm56b29jY3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5OTMxMTQsImV4cCI6MjA1MDU2OTExNH0.Y-CQyDc8CbOrIY5mR9l0YcffOQbn4KxP0J8E3jW90Jk';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// DOM Elements for Comments
+const commentForm = document.getElementById('commentForm');
+const commenterName = document.getElementById('commenterName');
+const commentText = document.getElementById('commentText');
+const commentsContainer = document.getElementById('commentsContainer');
+const adminCommentsList = document.getElementById('adminCommentsList');
+
+// Global variables
+let currentUser = null;
+let animeData = [];
+let editMode = false;
+let currentEpisodes = []; // To store current episodes when editing
+let currentAnime = null; // To store current playing anime
+let currentEpisodeIndex = 0; // Current episode index
+const EPISODES_PER_PAGE = 10; // Number of episodes per page
+
+// DOM Elements
+const homePage = document.getElementById('home-page');
+const adminPage = document.getElementById('admin-page');
+const loginPage = document.getElementById('login-page');
+const animeList = document.getElementById('animeList');
+const adminAnimeList = document.getElementById('adminAnimeList');
+const animeForm = document.getElementById('animeForm');
+const submitBtn = document.getElementById('submitBtn');
+const resetBtn = document.getElementById('resetBtn');
+const searchInput = document.getElementById('searchInput');
+const playerContainer = document.getElementById('playerContainer');
+const animePlayer = document.getElementById('animePlayer');
+const animeDetails = document.getElementById('animeDetails');
+const closePlayer = document.getElementById('closePlayer');
+const loginForm = document.getElementById('loginForm');
+const loginLogoutBtn = document.getElementById('loginLogout');
+const mobileLoginLogoutBtn = document.getElementById('mobileLoginLogout');
+const navLinks = document.querySelectorAll('.nav-link');
+const episodeList = document.getElementById('episodeList');
+const episodeUrl = document.getElementById('episodeUrl');
+const addEpisodeBtn = document.getElementById('addEpisodeBtn');
+const episodePagination = document.getElementById('episodePagination');
+const paginationDots = document.getElementById('paginationDots');
+const prevEpisodeBtn = document.getElementById('prevEpisodeBtn');
+const nextEpisodeBtn = document.getElementById('nextEpisodeBtn');
+const episodeInfo = document.getElementById('episodeInfo');
+const navSearchInput = document.getElementById('navSearchInput');
+const mobileSearchInput = document.getElementById('mobileSearchInput');
+const openMenu = document.getElementById('openMenu');
+const closeMenu = document.getElementById('closeMenu');
+const mobileNav = document.getElementById('mobileNav');
+const overlay = document.getElementById('overlay');
+
+// Check auth state
+async function checkAuthState() {
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        currentUser = user;
+        
+        if (user) {
+            loginLogoutBtn.textContent = 'Logout';
+            mobileLoginLogoutBtn.textContent = 'Logout';
+            document.querySelectorAll('.nav-link[data-page="admin"]').forEach(el => el.style.display = 'block');
+        } else {
+            loginLogoutBtn.textContent = 'Login';
+            mobileLoginLogoutBtn.textContent = 'Login';
+            document.querySelectorAll('.nav-link[data-page="admin"]').forEach(el => el.style.display = 'none');
+        }
+        
+        // Load anime after auth check
+        loadAnimeList();
+    } catch (error) {
+        console.error('Auth check error:', error);
+        currentUser = null;
+        loadAnimeList();
+    }
+}
+
+// Comment Form Submission
+commentForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Ensure current anime is available
+    if (!currentAnime) {
+        alert('Error: No anime selected');
+        return;
+    }
+    
+    const name = commenterName.value.trim();
+    const text = commentText.value.trim();
+    
+    if (!name || !text) {
+        alert('Silakan isi nama dan komentar Anda');
+        return;
+    }
+    
+    // Create comment object
+    const comment = {
+        name: name,
+        text: text,
+        anime_id: currentAnime.id,
+        anime_title: currentAnime.title,
+        episode: currentEpisodeIndex + 1,
+        timestamp: Date.now(),
+        date: new Date().toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }),
+        time: new Date().toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    };
+    
+    try {
+        // Save comment to database
+        const { error } = await supabase
+            .from('comments')
+            .insert([comment]);
+        
+        if (error) throw error;
+        
+        // Reset form
+        commentText.value = '';
+        
+        // Load updated comments
+        loadComments(currentAnime.id);
+        
+        // Show success notification
+        const notification = document.createElement('div');
+        notification.className = 'notification success';
+        notification.textContent = 'Komentar berhasil ditambahkan!';
+        commentForm.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        alert('Gagal menambahkan komentar: ' + error.message);
+    }
+});
+
+// Load comments for an anime
+async function loadComments(animeId) {
+    commentsContainer.innerHTML = '<div class="loading">Memuat komentar...</div>';
+    
+    try {
+        const { data: comments, error } = await supabase
+            .from('comments')
+            .select('*')
+            .eq('anime_id', animeId)
+            .order('timestamp', { ascending: false });
+        
+        if (error) throw error;
+        
+        commentsContainer.innerHTML = '';
+        
+        if (!comments || comments.length === 0) {
+            commentsContainer.innerHTML = '<div class="no-comments">Belum ada komentar. Jadilah yang pertama!</div>';
+            return;
+        }
+        
+        // Display comments
+        comments.forEach(comment => {
+            const commentItem = createCommentItem(comment);
+            commentsContainer.appendChild(commentItem);
+        });
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        commentsContainer.innerHTML = '<p>Gagal memuat komentar. Silakan coba lagi nanti.</p>';
+    }
+}
+
+// Create comment item element
+function createCommentItem(comment) {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    
+    item.innerHTML = `
+        <div class="comment-header-info">
+            <span class="commenter-name">${comment.name}</span>
+            <span class="comment-date">${comment.date} ${comment.time}</span>
+        </div>
+        <div class="comment-anime-info">
+            Menonton: ${comment.anime_title} - Episode ${comment.episode}
+        </div>
+        <div class="comment-content">
+            ${comment.text}
+        </div>
+    `;
+    
+    return item;
+}
+
+// Load all comments for admin
+async function loadAllComments() {
+    if (!adminCommentsList) return;
+    
+    adminCommentsList.innerHTML = '<div class="loading">Memuat komentar...</div>';
+    
+    try {
+        const { data: comments, error } = await supabase
+            .from('comments')
+            .select('*')
+            .order('timestamp', { ascending: false });
+        
+        if (error) throw error;
+        
+        adminCommentsList.innerHTML = '';
+        
+        if (!comments || comments.length === 0) {
+            adminCommentsList.innerHTML = '<div class="no-comments">Belum ada komentar.</div>';
+            return;
+        }
+        
+        // Display comments
+        comments.forEach(comment => {
+            const commentItem = createAdminCommentItem(comment);
+            adminCommentsList.appendChild(commentItem);
+        });
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        adminCommentsList.innerHTML = '<p>Gagal memuat komentar. Silakan coba lagi nanti.</p>';
+    }
+}
+
+// Create admin comment item with delete button
+function createAdminCommentItem(comment) {
+    const item = document.createElement('div');
+    item.className = 'admin-comment-item';
+    item.dataset.id = comment.id;
+    
+    item.innerHTML = `
+        <div class="admin-comment-anime">
+            ${comment.anime_title} - Episode ${comment.episode}
+        </div>
+        <div class="comment-header-info">
+            <span class="commenter-name">${comment.name}</span>
+            <span class="comment-date">${comment.date} ${comment.time}</span>
+        </div>
+        <div class="comment-content">
+            ${comment.text}
+        </div>
+        <button class="delete-comment-btn" data-id="${comment.id}">Hapus</button>
+    `;
+    
+    // Add event listener to delete button
+    const deleteBtn = item.querySelector('.delete-comment-btn');
+    deleteBtn.addEventListener('click', () => {
+        deleteComment(comment.id);
+    });
+    
+    return item;
+}
+
+// Delete comment
+async function deleteComment(commentId) {
+    if (confirm('Apakah Anda yakin ingin menghapus komentar ini?')) {
+        try {
+            const { error } = await supabase
+                .from('comments')
+                .delete()
+                .eq('id', commentId);
+            
+            if (error) throw error;
+            
+            // Remove comment element from DOM
+            const commentElement = document.querySelector(`.admin-comment-item[data-id="${commentId}"]`);
+            if (commentElement) {
+                commentElement.remove();
+            }
+            
+            // Check if current anime comments need to be refreshed
+            if (currentAnime) {
+                loadComments(currentAnime.id);
+            }
+            
+            // Check if admin comments list is now empty
+            if (adminCommentsList && adminCommentsList.children.length === 0) {
+                adminCommentsList.innerHTML = '<div class="no-comments">Belum ada komentar.</div>';
+            }
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            alert('Gagal menghapus komentar: ' + error.message);
+        }
+    }
+}
+
+// Modify the openPlayer function to load comments
+const originalOpenPlayer = openPlayer;
+openPlayer = function(anime) {
+    originalOpenPlayer(anime);
+    
+    // Load comments for this anime
+    loadComments(anime.id);
 };
 
- // DOM Elements for Comments
-        const commentForm = document.getElementById('commentForm');
-        const commenterName = document.getElementById('commenterName');
-        const commentText = document.getElementById('commentText');
-        const commentsContainer = document.getElementById('commentsContainer');
-        const adminCommentsList = document.getElementById('adminCommentsList');
-        
-        // Comment Form Submission
-        commentForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Ensure current anime is available
-            if (!currentAnime) {
-                alert('Error: No anime selected');
-                return;
-            }
-            
-            const name = commenterName.value.trim();
-            const text = commentText.value.trim();
-            
-            if (!name || !text) {
-                alert('Silakan isi nama dan komentar Anda');
-                return;
-            }
-            
-            // Create comment object
-            const comment = {
-                name: name,
-                text: text,
-                animeId: currentAnime.id,
-                animeTitle: currentAnime.title,
-                episode: currentEpisodeIndex + 1,
-                timestamp: Date.now(),
-                date: new Date().toLocaleDateString('id-ID', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }),
-                time: new Date().toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-            };
-            
-            // Save comment to database
-            db.ref('comments').push(comment)
-                .then(() => {
-                    // Reset form
-                    commentText.value = '';
-                    
-                    // Load updated comments
-                    loadComments(currentAnime.id);
-                    
-                    // Show success notification
-                    const notification = document.createElement('div');
-                    notification.className = 'notification success';
-                    notification.textContent = 'Komentar berhasil ditambahkan!';
-                    commentForm.appendChild(notification);
-                    
-                    // Remove notification after 3 seconds
-                    setTimeout(() => {
-                        notification.remove();
-                    }, 3000);
-                })
-                .catch(error => {
-                    console.error('Error adding comment:', error);
-                    alert('Gagal menambahkan komentar: ' + error.message);
-                });
-        });
-        
-        // Load comments for an anime
-        function loadComments(animeId) {
-            commentsContainer.innerHTML = '<div class="loading">Memuat komentar...</div>';
-            
-            // Query comments for this anime, ordered by timestamp descending (newest first)
-            db.ref('comments').orderByChild('animeId').equalTo(animeId).once('value')
-                .then(snapshot => {
-                    commentsContainer.innerHTML = '';
-                    
-                    if (!snapshot.exists()) {
-                        commentsContainer.innerHTML = '<div class="no-comments">Belum ada komentar. Jadilah yang pertama!</div>';
-                        return;
-                    }
-                    
-                    // Convert snapshot to array to sort
-                    const comments = [];
-                    snapshot.forEach(childSnapshot => {
-                        const comment = childSnapshot.val();
-                        comment.id = childSnapshot.key;
-                        comments.push(comment);
-                    });
-                    
-                    // Sort by timestamp descending (newest first)
-                    comments.sort((a, b) => b.timestamp - a.timestamp);
-                    
-                    // Display comments
-                    comments.forEach(comment => {
-                        const commentItem = createCommentItem(comment);
-                        commentsContainer.appendChild(commentItem);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading comments:', error);
-                    commentsContainer.innerHTML = '<p>Gagal memuat komentar. Silakan coba lagi nanti.</p>';
-                });
-        }
-        
-        // Create comment item element
-        function createCommentItem(comment) {
-            const item = document.createElement('div');
-            item.className = 'comment-item';
-            
-            item.innerHTML = `
-                <div class="comment-header-info">
-                    <span class="commenter-name">${comment.name}</span>
-                    <span class="comment-date">${comment.date} ${comment.time}</span>
-                </div>
-                <div class="comment-anime-info">
-                    Menonton: ${comment.animeTitle} - Episode ${comment.episode}
-                </div>
-                <div class="comment-content">
-                    ${comment.text}
-                </div>
-            `;
-            
-            return item;
-        }
-        
-        // Load all comments for admin
-        function loadAllComments() {
-            if (!adminCommentsList) return;
-            
-            adminCommentsList.innerHTML = '<div class="loading">Memuat komentar...</div>';
-            
-            // Get all comments, ordered by timestamp descending (newest first)
-            db.ref('comments').orderByChild('timestamp').once('value')
-                .then(snapshot => {
-                    adminCommentsList.innerHTML = '';
-                    
-                    if (!snapshot.exists()) {
-                        adminCommentsList.innerHTML = '<div class="no-comments">Belum ada komentar.</div>';
-                        return;
-                    }
-                    
-                    // Convert snapshot to array to sort
-                    const comments = [];
-                    snapshot.forEach(childSnapshot => {
-                        const comment = childSnapshot.val();
-                        comment.id = childSnapshot.key;
-                        comments.push(comment);
-                    });
-                    
-                    // Sort by timestamp descending (newest first)
-                    comments.sort((a, b) => b.timestamp - a.timestamp);
-                    
-                    // Display comments
-                    comments.forEach(comment => {
-                        const commentItem = createAdminCommentItem(comment);
-                        adminCommentsList.appendChild(commentItem);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading comments:', error);
-                    adminCommentsList.innerHTML = '<p>Gagal memuat komentar. Silakan coba lagi nanti.</p>';
-                });
-        }
-        
-        // Create admin comment item with delete button
-        function createAdminCommentItem(comment) {
-            const item = document.createElement('div');
-            item.className = 'admin-comment-item';
-            item.dataset.id = comment.id;
-            
-            item.innerHTML = `
-                <div class="admin-comment-anime">
-                    ${comment.animeTitle} - Episode ${comment.episode}
-                </div>
-                <div class="comment-header-info">
-                    <span class="commenter-name">${comment.name}</span>
-                    <span class="comment-date">${comment.date} ${comment.time}</span>
-                </div>
-                <div class="comment-content">
-                    ${comment.text}
-                </div>
-                <button class="delete-comment-btn" data-id="${comment.id}">Hapus</button>
-            `;
-            
-            // Add event listener to delete button
-            const deleteBtn = item.querySelector('.delete-comment-btn');
-            deleteBtn.addEventListener('click', () => {
-                deleteComment(comment.id);
-            });
-            
-            return item;
-        }
-        
-        // Delete comment
-        function deleteComment(commentId) {
-            if (confirm('Apakah Anda yakin ingin menghapus komentar ini?')) {
-                db.ref('comments/' + commentId).remove()
-                    .then(() => {
-                        // Remove comment element from DOM
-                        const commentElement = document.querySelector(`.admin-comment-item[data-id="${commentId}"]`);
-                        if (commentElement) {
-                            commentElement.remove();
-                        }
-                        
-                        // Check if current anime comments need to be refreshed
-                        if (currentAnime) {
-                            loadComments(currentAnime.id);
-                        }
-                        
-                        // Check if admin comments list is now empty
-                        if (adminCommentsList && adminCommentsList.children.length === 0) {
-                            adminCommentsList.innerHTML = '<div class="no-comments">Belum ada komentar.</div>';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error deleting comment:', error);
-                        alert('Gagal menghapus komentar: ' + error.message);
-                    });
-            }
-        }
-        
-        // Modify the existing openPlayer function to load comments
-        const originalOpenPlayer = openPlayer;
-        openPlayer = function(anime) {
-            originalOpenPlayer(anime);
-            
-            // Load comments for this anime
-            loadComments(anime.id);
-        };
-        
-        // Modify the existing showPage function to load all comments when on admin page
-        const originalShowPage = showPage;
-        showPage = function(page) {
-            originalShowPage(page);
-            
-            if (page === 'admin' && currentUser) {
-                loadAllComments();
-            }
-        };
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+// Modify the showPage function to load all comments when on admin page
+const originalShowPage = showPage;
+showPage = function(page) {
+    originalShowPage(page);
+    
+    if (page === 'admin' && currentUser) {
+        loadAllComments();
+    }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     const slides = document.querySelector('.slides');
@@ -1764,69 +1815,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.carousel').addEventListener('mouseleave', startAutoPlay);
 });
 
-// DOM Elements
-const homePage = document.getElementById('home-page');
-const adminPage = document.getElementById('admin-page');
-const loginPage = document.getElementById('login-page');
-const animeList = document.getElementById('animeList');
-const adminAnimeList = document.getElementById('adminAnimeList');
-const animeForm = document.getElementById('animeForm');
-const submitBtn = document.getElementById('submitBtn');
-const resetBtn = document.getElementById('resetBtn');
-const searchInput = document.getElementById('searchInput');
-const playerContainer = document.getElementById('playerContainer');
-const animePlayer = document.getElementById('animePlayer');
-const animeDetails = document.getElementById('animeDetails');
-const closePlayer = document.getElementById('closePlayer');
-const loginForm = document.getElementById('loginForm');
-const loginLogoutBtn = document.getElementById('loginLogout');
-const mobileLoginLogoutBtn = document.getElementById('mobileLoginLogout');
-const navLinks = document.querySelectorAll('.nav-link');
-const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
-const episodeList = document.getElementById('episodeList');
-const episodeUrl = document.getElementById('episodeUrl');
-const addEpisodeBtn = document.getElementById('addEpisodeBtn');
-const episodePagination = document.getElementById('episodePagination');
-const paginationDots = document.getElementById('paginationDots');
-const prevEpisodeBtn = document.getElementById('prevEpisodeBtn');
-const nextEpisodeBtn = document.getElementById('nextEpisodeBtn');
-const episodeInfo = document.getElementById('episodeInfo');
-const navSearchInput = document.getElementById('navSearchInput');
-const mobileSearchInput = document.getElementById('mobileSearchInput');
-const openMenu = document.getElementById('openMenu');
-const closeMenu = document.getElementById('closeMenu');
-const mobileNav = document.getElementById('mobileNav');
-const overlay = document.getElementById('overlay');
-
-// Global variables
-let currentUser = null;
-let animeData = [];
-let editMode = false;
-let currentEpisodes = []; // To store current episodes when editing
-let currentAnime = null; // To store current playing anime
-let currentEpisodeIndex = 0; // Current episode index
-const EPISODES_PER_PAGE = 10; // Number of episodes per page
-
-// Check auth state
-auth.onAuthStateChanged(user => {
-    currentUser = user;
-    
-    if (user) {
-        loginLogoutBtn.textContent = 'Logout';
-        mobileLoginLogoutBtn.textContent = 'Logout';
-        document.querySelector('.nav-link[data-page="admin"]').style.display = 'block';
-        document.querySelector('.mobile-nav-link[data-page="admin"]').style.display = 'block';
-    } else {
-        loginLogoutBtn.textContent = 'Login';
-        mobileLoginLogoutBtn.textContent = 'Login';
-        document.querySelector('.nav-link[data-page="admin"]').style.display = 'none';
-        document.querySelector('.mobile-nav-link[data-page="admin"]').style.display = 'none';
-    }
-    
-    // Load anime after auth check
-    loadAnimeList();
-});
-
 // Navigation
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
@@ -1837,22 +1825,6 @@ navLinks.forEach(link => {
         // Update active link
         navLinks.forEach(navLink => navLink.classList.remove('active'));
         link.classList.add('active');
-    });
-});
-
-// Mobile Navigation
-mobileNavLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const page = link.getAttribute('data-page');
-        showPage(page);
-        
-        // Update active link
-        mobileNavLinks.forEach(navLink => navLink.classList.remove('active'));
-        link.classList.add('active');
-        
-        // Close mobile menu
-        closeMobileMenu();
     });
 });
 
@@ -1885,15 +1857,18 @@ mobileLoginLogoutBtn.addEventListener('click', (e) => {
     closeMobileMenu();
 });
 
-function handleLoginLogout() {
+async function handleLoginLogout() {
     if (currentUser) {
         // Logout
-        auth.signOut().then(() => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Sign out error:', error);
+        } else {
+            currentUser = null;
             console.log('User signed out');
             showPage('home');
-        }).catch(error => {
-            console.error('Sign out error:', error);
-        });
+            checkAuthState();
+        }
     } else {
         // Show login page
         showPage('login');
@@ -1901,22 +1876,28 @@ function handleLoginLogout() {
 }
 
 // Login form submission
-loginForm.addEventListener('submit', (e) => {
+loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     
-    auth.signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
-            console.log('User logged in:', userCredential.user);
-            loginForm.reset();
-            showPage('admin');
-        })
-        .catch(error => {
-            alert('Login gagal: ' + error.message);
-            console.error('Login error:', error);
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
         });
+        
+        if (error) throw error;
+        
+        console.log('User logged in:', data.user);
+        loginForm.reset();
+        checkAuthState();
+        showPage('admin');
+    } catch (error) {
+        alert('Login gagal: ' + error.message);
+        console.error('Login error:', error);
+    }
 });
 
 // Show specific page
@@ -1964,67 +1945,50 @@ function updateActiveLinks(page) {
             link.classList.remove('active');
         }
     });
-    
-    // Update mobile links
-    mobileNavLinks.forEach(link => {
-        if (link.getAttribute('data-page') === page) {
-            link.classList.add('active');
-        } else {
-            link.classList.remove('active');
-        }
-    });
 }
 
 // Load anime list
-function loadAnimeList(isAdmin = false) {
+async function loadAnimeList(isAdmin = false) {
     const target = isAdmin ? adminAnimeList : animeList;
     target.innerHTML = '<div class="loading">Memuat daftar anime...</div>';
     
-    // Menggunakan Realtime Database
-    db.ref('animes').once('value')
-        .then(snapshot => {
-            animeData = [];
-            target.innerHTML = '';
-            
-            if (!snapshot.exists()) {
-                target.innerHTML = '<p>Tidak ada anime yang ditemukan.</p>';
-                return;
+    try {
+        const { data: animes, error } = await supabase
+            .from('animes')
+            .select('*')
+            .order('updated_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        animeData = [];
+        target.innerHTML = '';
+        
+        if (!animes || animes.length === 0) {
+            target.innerHTML = '<p>Tidak ada anime yang ditemukan.</p>';
+            return;
+        }
+        
+        animes.forEach(anime => {
+            // Make sure episodes is always an array
+            if (!anime.episodes || !Array.isArray(anime.episodes)) {
+                anime.episodes = anime.video_url ? [anime.video_url] : [];
             }
             
-            snapshot.forEach(childSnapshot => {
-                const anime = childSnapshot.val();
-                anime.id = childSnapshot.key; // Mendapatkan key sebagai ID
-                
-                // Make sure episodes is always an array
-                if (!anime.episodes || !Array.isArray(anime.episodes)) {
-                    anime.episodes = anime.videoUrl ? [anime.videoUrl] : [];
-                }
-                
-                // Add episodeCount for display
-                anime.episodeCount = anime.episodes.length;
-                
-                animeData.push(anime);
-            });
+            // Add episodeCount for display
+            anime.episodeCount = anime.episodes.length;
             
-            // Urutkan anime berdasarkan updatedAt terbaru di atas
-            animeData.sort((a, b) => {
-                // Gunakan updatedAt atau createdAt, dengan fallback ke 0 jika keduanya tidak ada
-                const timeA = a.updatedAt || a.createdAt || 0;
-                const timeB = b.updatedAt || b.createdAt || 0;
-                // Urutkan menurun (terbaru dulu)
-                return timeB - timeA;
-            });
-            
-            // Tampilkan anime yang sudah diurutkan
-            animeData.forEach(anime => {
-                const animeCard = createAnimeCard(anime, isAdmin);
-                target.appendChild(animeCard);
-            });
-        })
-        .catch(error => {
-            console.error("Error getting data: ", error);
-            target.innerHTML = '<p>Gagal memuat daftar anime. Silakan coba lagi nanti.</p>';
+            animeData.push(anime);
         });
+        
+        // Tampilkan anime yang sudah diurutkan
+        animeData.forEach(anime => {
+            const animeCard = createAnimeCard(anime, isAdmin);
+            target.appendChild(animeCard);
+        });
+    } catch (error) {
+        console.error("Error getting data: ", error);
+        target.innerHTML = '<p>Gagal memuat daftar anime. Silakan coba lagi nanti.</p>';
+    }
 }
 
 // Create anime card
@@ -2033,7 +1997,7 @@ function createAnimeCard(anime, isAdmin = false) {
     card.className = 'anime-card';
     
     card.innerHTML = `
-        <img src="${anime.imageUrl || '/api/placeholder/200/250'}" alt="${anime.title}" onerror="this.src='/api/placeholder/200/250'">
+        <img src="${anime.image_url || '/api/placeholder/200/250'}" alt="${anime.title}" onerror="this.src='/api/placeholder/200/250'">
         <div class="anime-info">
             <h3>${anime.title}</h3>
             <p>${anime.genre || 'Tidak ada genre'}</p>
@@ -2180,8 +2144,8 @@ function openPlayer(anime) {
     // Update player source with first episode
     if (anime.episodes && anime.episodes.length > 0) {
         animePlayer.src = anime.episodes[0];
-    } else if (anime.videoUrl) {
-        animePlayer.src = anime.videoUrl;
+    } else if (anime.video_url) {
+        animePlayer.src = anime.video_url;
     } else {
         alert('Tidak ada video tersedia untuk anime ini.');
         return;
@@ -2218,7 +2182,7 @@ function editAnime(anime) {
     document.getElementById('animeId').value = anime.id;
     document.getElementById('title').value = anime.title || '';
     document.getElementById('description').value = anime.description || '';
-    document.getElementById('imageUrl').value = anime.imageUrl || '';
+    document.getElementById('imageUrl').value = anime.image_url || '';
     document.getElementById('genre').value = anime.genre || '';
     
     // Reset episodes list
@@ -2273,17 +2237,22 @@ addEpisodeBtn.addEventListener('click', () => {
 });
 
 // Delete anime
-function deleteAnime(id) {
+async function deleteAnime(id) {
     if (confirm('Apakah Anda yakin ingin menghapus anime ini?')) {
-        db.ref('animes/' + id).remove()
-            .then(() => {
-                alert('Anime berhasil dihapus');
-                loadAnimeList(true);
-            })
-            .catch(error => {
-                console.error('Delete error:', error);
-                alert('Gagal menghapus anime: ' + error.message);
-            });
+        try {
+            const { error } = await supabase
+                .from('animes')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            alert('Anime berhasil dihapus');
+            loadAnimeList(true);
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Gagal menghapus anime: ' + error.message);
+        }
     }
 }
 
@@ -2360,7 +2329,7 @@ mobileSearchInput.addEventListener('input', () => {
 });
 
 // Add/Update anime form submission
-animeForm.addEventListener('submit', (e) => {
+animeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const animeId = document.getElementById('animeId').value;
@@ -2372,38 +2341,41 @@ animeForm.addEventListener('submit', (e) => {
     const animeData = {
         title,
         description,
-        imageUrl,
+        image_url: imageUrl,
         genre,
         episodes: currentEpisodes,
-        updatedAt: Date.now()
+        updated_at: new Date().toISOString()
     };
     
-    if (editMode && animeId) {
-        // Update existing anime
-        db.ref('animes/' + animeId).update(animeData)
-            .then(() => {
-                alert('Anime berhasil diperbarui');
-                resetBtn.click();
-                loadAnimeList(true);
-            })
-            .catch(error => {
-                console.error('Update error:', error);
-                alert('Gagal memperbarui anime: ' + error.message);
-            });
-    } else {
-        // Add new anime
-        animeData.createdAt = Date.now();
+    try {
+        if (editMode && animeId) {
+            // Update existing anime
+            const { error } = await supabase
+                .from('animes')
+                .update(animeData)
+                .eq('id', animeId);
+            
+            if (error) throw error;
+            
+            alert('Anime berhasil diperbarui');
+        } else {
+            // Add new anime
+            animeData.created_at = new Date().toISOString();
+            
+            const { error } = await supabase
+                .from('animes')
+                .insert([animeData]);
+            
+            if (error) throw error;
+            
+            alert('Anime berhasil ditambahkan');
+        }
         
-        db.ref('animes').push(animeData)
-            .then(() => {
-                alert('Anime berhasil ditambahkan');
-                resetBtn.click();
-                loadAnimeList(true);
-            })
-            .catch(error => {
-                console.error('Add error:', error);
-                alert('Gagal menambahkan anime: ' + error.message);
-            });
+        resetBtn.click();
+        loadAnimeList(true);
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Gagal menyimpan anime: ' + error.message);
     }
 });
 
@@ -2431,6 +2403,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Initial page load - show home
+checkAuthState();
 showPage('home');
     </script>
 </body>
